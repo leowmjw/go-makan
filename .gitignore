@@ -13,3 +13,13 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# Ignore service sensitive config
+config/
+
+# Ignore Direnv
+.envrc*
+
+# Ignore Goland
+.idea
+
