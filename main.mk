@@ -30,6 +30,10 @@ GOLANGCI_VERSION ?= 1.41.1
 
 GOLANG_VERSION ?= 1.17
 
+.PHONY bingo
+bingo:
+	# Use bingo to do stuff ...
+
 .PHONY: clear
 clear: ${CLEAR_TARGETS} ## Clear the working area and the project
 	rm -rf bin/
