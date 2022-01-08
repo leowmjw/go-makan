@@ -26,13 +26,13 @@ endif
 
 # Dependency versions
 GOTESTSUM_VERSION ?= 1.6.4
-GOLANGCI_VERSION ?= 1.41.1
+GOLANGCI_VERSION ?= 1.43.0
 
 GOLANG_VERSION ?= 1.17
 
-.PHONY bingo
-bingo:
-	# Use bingo to do stuff ...
+.PHONY: bingo
+bingo: ## Use bingo to do stuff ...
+	@echo "Bingo!!!"
 
 .PHONY: clear
 clear: ${CLEAR_TARGETS} ## Clear the working area and the project

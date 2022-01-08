@@ -3,14 +3,13 @@ module app
 go 1.17
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/urfave/cli/v2 v2.3.0
-	go.temporal.io/api v1.6.0
 	go.temporal.io/sdk v1.11.1
 )
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -28,6 +27,7 @@ require (
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/twmb/murmur3 v1.1.6 // indirect
 	github.com/uber-go/tally/v4 v4.0.1 // indirect
+	go.temporal.io/api v1.6.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/net v0.0.0-20211101193420-4a448f8816b3 // indirect
 	golang.org/x/sys v0.0.0-20211031064116-611d5d643895 // indirect

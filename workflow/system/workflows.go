@@ -24,3 +24,6 @@ func DeliveryOrderWorkflow(ctx workflow.Context) {
 	// Deliver
 	// Cash Collect ..
 }
+
+// Event Broker function that sends signal for new events (Kafka-like)
+// SysConsumerWorkflow - Consumes all events; and send to needed; restart every 1k events
