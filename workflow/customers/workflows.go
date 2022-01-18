@@ -2,82 +2,138 @@ package customers
 
 import (
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"go.temporal.io/sdk/workflow"
 	"strings"
 )
 
-// Will move it to the common type to be shared ..
+type Customer struct {
+	ID              string
+	LinkedPhoneNo   string
+	FullName        string
+	DisplayName     string
+	SignedAgreement bool
+	SignUpDate      string
+	TerminationDate string
+}
+
+// Will move some below to the common type to be shared ..
 
 type Item struct {
 	ShortName string
 	ShortCode string
 	Quantity  int
 	Amount    int
-	Notes     string
+	Notes     string // can use to indicate discounts?
 }
 
-type PaymentMethod struct {
+type PaymentDetails struct {
 	ID        string
 	ShortName string
-	COD       bool // Signal slightly different flow; since need get cash
+	//COD       bool   // Only CC, others Future
+	Itemized []string // How Total was caluclated for audit.history ..
+	Total    int
 }
 
 type OffersClaim struct {
 	ID        string
 	ShortName string
 }
+
 type DeliveryDetails struct {
-	CustomerID    string
-	FullAddress   []string
-	ContactNumber string
+	CustomerID string
+	//DeliveryDate  string // Future
+	//DeliveryTime  string // Future
+	FullAddress      []string
+	ContactNumber    string
+	DeliveryCost     int
+	DeliveryRange    int
+	DeliveryEstimate int
 }
 
 type Order struct {
 	ID        string
 	PartnerID string
 	Items     []Item
-	PaymentMethod
+	DeliveryDetails
+	PaymentDetails
 	OffersClaim
+}
+
+type OrderDelivery struct {
+	OrderID             string
+	Status              int
+	PartnerAcceptedDate string
+	PartnerPreparedDate string
+	AgentAcceptedDate   string
+	AgentPickedUpDate   string
+	DeliveryCompleted   string
+	Rating              int
 }
 
 type ShoppingCart struct {
 	PartnerID string
 	Items     []Item
+	DeliveryDetails
 }
 
 // WorkflowID is customerID/partnerID? guarantee one actively running
 
 func CustomerWorkflow(ctx workflow.Context) {
-	// Sign up
+	// Sign up Account / Contract / Sign Agreement
+	// Verify Phone; sign agreement ..
+	// Reactivate Account ..
 
-	// Sign off
+	// Terminate Account / Contract
+
+	// Temporary/Permanent Ban
 }
 
-func PreOrderWorkflow(ctx workflow.Context) (ShoppingCart, error) {
+// OrderWorkflow will confirm the COD delivery details
+func OrderWorkflow(ctx workflow.Context, items []Item, delDetails DeliveryDetails) (Order, error) {
 	// Query will return shoppingCart ..
+	// Finalize location + date/time..?
 
 	// Split the wfid to get the CustomerID/PartnerID combo
 	i := workflow.GetInfo(ctx)
 	wfid := i.WorkflowExecution.ID
 	ids := strings.Split(wfid, "/")
-	fmt.Println("CustomerID: ", ids[0], " PartnerID: ", ids[1])
+	customerID := ids[0]
+	partnerID := ids[1]
+	fmt.Println("CustomerID: ", customerID, " PartnerID: ", partnerID)
 	fmt.Println("CustomerOrderWorkflow ID: ", wfid, " ", i.WorkflowExecution.RunID)
+
+	// Create a new ShoppingCart for use in the future/interruption ..
+	// Basic validation? if got no items? partnerID must be valid?
+	cart := ShoppingCart{
+		PartnerID:       partnerID,
+		Items:           items,
+		DeliveryDetails: delDetails,
+	}
+	spew.Dump(cart)
+	// Now block while wating for human signal ..
+
 	// Choose Order + Details from Partner Business
 	// or is reloaded from previously active/abndoned
 
+	// action - CRUD .. for Items + DeliveryDetails; adjust only quantity
 	// Can cancel, drop-off here .. after a short while; or come back later?
 
 	// Choice made but not confirmed yet ..
 	// Make payment (if is COD) Success to Escrowo
+
+	// Recalculate everything; show the new vakues ..
 	// Payment must be attached before can kick off
 
-	cart := ShoppingCart{}
-	return cart, nil
+	order := Order{}
+	// Persist Order; just pass back ID??
+	return order, nil
 }
 
-// CustomerOrderWorkflow is accepted ShoppingCart?
-func CustomerOrderWorkflow(ctx workflow.Context) (Order, error) {
+// WaitOrderWorkflow is accepted ShoppingCart?
+func WaitOrderWorkflow(ctx workflow.Context, order Order) (OrderDelivery, error) {
 
+	// TODO: Future; scheduled delivery; Partner needs to confirm
 	// Child workflow of OrderOffer to Partner
 	// Order is accepted by Partner
 
@@ -89,9 +145,25 @@ func CustomerOrderWorkflow(ctx workflow.Context) (Order, error) {
 
 	// Payment collected Reversed for Canceled
 
+	// If get signal from Partner in Kitchen; refresh?
+	// If take too long; will force reload ??
+
+	// Get signal is in the kitchen
+
+	// Get signal picked up
+
+	// Get signal delivered ..
+	// finalize the struct OrderDelivery (from custoer perspective)
 	// Send Feedback ..
-	order := Order{}
-	return order, nil
+	orderdel := OrderDelivery{}
+	return orderdel, nil
 }
 
-// Confirmed Order; track acceptance to delivery completion?
+// PostOrderWorkflow will handle things like feedback; wrong delivery; support etc..
+func PostOrderWorkflow(ctx workflow.Context, order OrderDelivery) error {
+	// Emit  signal for Projection .. Report/Admin
+	// Get support to chat for this Order (workflowID == OrderID) or customerID/OrderID? or OrderDelivery
+	// Collect rating for Partner
+	// Collect rating for Agent
+	return nil
+}
