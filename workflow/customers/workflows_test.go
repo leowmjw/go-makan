@@ -1,16 +1,21 @@
 package customers
 
 import (
+	"errors"
+	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestOrderWorkflow(t *testing.T) {
 	type args struct {
+		cart       ShoppingCart
 		items      []Item
 		delDetails DeliveryDetails
 	}
@@ -22,6 +27,10 @@ func TestOrderWorkflow(t *testing.T) {
 	}{
 		// TODO: Add test cases.
 		{"happy #1", args{
+			cart: ShoppingCart{
+				CustomerID: "mleow",
+				PartnerID:  "baba-ang",
+			},
 			items: []Item{
 				{
 					ShortName: "",
@@ -51,11 +60,11 @@ func TestOrderWorkflow(t *testing.T) {
 			PartnerID: "",
 			Items: []Item{
 				{
-					ShortName: "",
-					ShortCode: "",
-					Quantity:  0,
-					Amount:    0,
-					Notes:     "",
+					ShortName: "FishBurger",
+					ShortCode: "FB-01",
+					Quantity:  1,
+					Amount:    10,
+					Notes:     "is goode",
 				},
 			},
 			DeliveryDetails: DeliveryDetails{
@@ -95,15 +104,85 @@ func TestOrderWorkflow(t *testing.T) {
 			})
 
 			env.RegisterWorkflow(OrderWorkflow)
-			env.ExecuteWorkflow(OrderWorkflow, tt.args.items, tt.args.delDetails)
-
+			// Should finish iin 1 sec; if forget to send complete signal is done .. is clock time
+			env.SetTestTimeout(time.Second)
 			// Add item1, add item2, add item3, mod item3, add item 4, remove item4
+			env.RegisterDelayedCallback(func() {
+				env.SignalWorkflow("order-action", OrderSignal{
+					Action: "upsert",
+					Item: Item{
+						ShortName: "FishBurger",
+						ShortCode: "FB-01",
+						Quantity:  1,
+						Amount:    10,
+						Notes:     "is goode",
+					},
+				})
+			}, time.Millisecond)
+			env.RegisterDelayedCallback(func() {
+				env.SignalWorkflow("order-action", OrderSignal{
+					Action: "upsert",
+					Item: Item{
+						ShortName: "LAMBIE BURGER",
+						ShortCode: "LAMB-01",
+						Quantity:  2,
+						Amount:    20,
+						Notes:     "",
+					},
+				})
+			}, time.Millisecond*2)
+			env.RegisterDelayedCallback(func() {
+				env.SignalWorkflow("order-action", OrderSignal{
+					Action: "delete",
+					Item: Item{
+						ShortCode: "FB-01",
+					},
+				})
+			}, time.Millisecond*3)
+			env.RegisterDelayedCallback(func() {
+				env.SignalWorkflow("order-action", OrderSignal{
+					Action: "upsert",
+					Item: Item{
+						ShortName: "LAMBIE BURGER",
+						ShortCode: "LAMB-01",
+						Quantity:  2,
+						Amount:    20,
+						Notes:     "",
+					},
+				})
+			}, time.Millisecond*4)
+			env.RegisterDelayedCallback(func() {
+				env.SignalWorkflow("order-action", OrderSignal{
+					Action: "upsert",
+					Item: Item{
+						ShortName: "Veggy Burger",
+						ShortCode: "VEG-01",
+						Quantity:  1,
+						Amount:    5,
+						Notes:     "",
+					},
+				})
+			}, time.Millisecond*4000)
+			// If don;t have this; is doom!
+			env.RegisterDelayedCallback(func() {
+				env.SignalWorkflow("order-action", OrderSignal{
+					Action: "complete",
+				})
+			}, time.Millisecond*5000)
+
+			// all done setup; run things
+			env.ExecuteWorkflow(OrderWorkflow, tt.args.cart)
 			// Confirm + pay
 			if !env.IsWorkflowCompleted() {
 				t.Fatal("WF NOT COmpleted!! Timed out??")
 			}
 			if wferr := env.GetWorkflowError(); wferr != nil {
-				t.Fatal(wferr)
+
+				var appErr *temporal.ApplicationError
+				if errors.As(wferr, &appErr) {
+					fmt.Println("ERR_TYPE:", appErr.Type())
+				}
+				t.Fatal(errors.Unwrap(wferr))
 			}
 			var got Order
 			rerr := env.GetWorkflowResult(&got)
@@ -126,7 +205,15 @@ func TestOrderWorkflow(t *testing.T) {
 	}
 }
 
-func TestWaitOrderWorkflow(t *testing.T) {
+func TestOrderCompleteModifyWorkflow(t *testing.T) {
+
+	// Create a basic order; see basket
+	// Add offers
+	// Go back and modify
+	// Checkout again
+}
+
+func TestCompleteOrderWorkflow(t *testing.T) {
 	type args struct {
 		ctx   workflow.Context
 		order Order
@@ -141,13 +228,13 @@ func TestWaitOrderWorkflow(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := WaitOrderWorkflow(tt.args.ctx, tt.args.order)
+			got, err := CompleteOrderWorkflow(tt.args.ctx, tt.args.order)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("WaitOrderWorkflow() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CompleteOrderWorkflow() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("WaitOrderWorkflow() got = %v, want %v", got, tt.want)
+				t.Errorf("CompleteOrderWorkflow() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

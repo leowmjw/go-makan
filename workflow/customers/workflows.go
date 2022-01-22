@@ -2,9 +2,7 @@ package customers
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"go.temporal.io/sdk/workflow"
-	"strings"
 )
 
 type Customer struct {
@@ -78,6 +76,11 @@ type ShoppingCart struct {
 	DeliveryDetails
 }
 
+type OrderSignal struct {
+	Action string
+	Item
+}
+
 // WorkflowID is customerID/partnerID? guarantee one actively running
 
 func CustomerWorkflow(ctx workflow.Context) {
@@ -91,35 +94,56 @@ func CustomerWorkflow(ctx workflow.Context) {
 }
 
 // OrderWorkflow will confirm the COD delivery details
-func OrderWorkflow(ctx workflow.Context, items []Item, delDetails DeliveryDetails) (Order, error) {
+func OrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
 	// Query will return shoppingCart ..
-	// Finalize location + date/time..?
+	// Default date/time is now .. location is auto-filled based on location
 
 	// Split the wfid to get the CustomerID/PartnerID combo
 	i := workflow.GetInfo(ctx)
 	wfid := i.WorkflowExecution.ID
 	fmt.Println("IN OrderWorkflow!!! WFID: ", wfid)
-	ids := strings.Split(wfid, "/")
-	fmt.Println("ID Split: ", ids)
-	customerID := "mleow"
-	partnerID := "baba-ang"
-	//customerID := ids[0]
-	//partnerID := ids[1]
-	fmt.Println("CustomerID: ", customerID, " PartnerID: ", partnerID)
+	fmt.Println("CustomerID: ", cart.CustomerID, " PartnerID: ", cart.PartnerID)
 	fmt.Println("CustomerOrderWorkflow ID: ", wfid, " ", i.WorkflowExecution.RunID)
 
 	// Create a new ShoppingCart for use in the future/interruption ..
 	// Basic validation? if got no items? partnerID must be valid?
-	cart := ShoppingCart{
-		PartnerID:       partnerID,
-		Items:           items,
-		DeliveryDetails: delDetails,
-	}
-	spew.Dump(cart)
+	//cart := ShoppingCart{
+	//	PartnerID:       partnerID,
+	//	Items:           items,
+	//	DeliveryDetails: delDetails,
+	//}
+
+	// If fail validation; how?
+	//temporal.NewApplicationError()
+	// DEBUG
+	//spew.Dump(cart)
 	// Now block while wating for human signal ..
 
 	// Choose Order + Details from Partner Business
 	// or is reloaded from previously active/abndoned
+	//receivedPlaceOrder := false
+	signalChan := workflow.GetSignalChannel(ctx, "order-action")
+	for {
+		// Block until PlaceOrder which is order-action -> complete
+		var orderSignal *OrderSignal
+		more := signalChan.Receive(ctx, &orderSignal)
+		if !more {
+			fmt.Println("Channel closed ..")
+			break
+		}
+		// DEBUG
+		//spew.Dump(orderSignal)
+		// Test loop out
+		if orderSignal.Action == "complete" {
+			break
+		}
+		//receivedPlaceOrder = true
+		//if receivedPlaceOrder {
+		//	break
+		//}
+	}
+	// action - AddToBasket
+	// action - RemoveFromBasket
 
 	// action - CRUD .. for Items + DeliveryDetails; adjust only quantity
 	// Can cancel, drop-off here .. after a short while; or come back later?
@@ -127,18 +151,23 @@ func OrderWorkflow(ctx workflow.Context, items []Item, delDetails DeliveryDetail
 	// Choice made but not confirmed yet ..
 	// Make payment (if is COD) Success to Escrowo
 
-	// Checkout signal confirms things? and unblocks
+	// SeeBasket signal calculation and unblocks
 
 	// Recalculate everything; show the new vakues ..
 	// Payment must be attached before can kick off
 
+	// action - PlaceOrder to unblock final and complete ..
+	// Calculate the time order OrderID
 	order := Order{}
 	// Persist Order; just pass back ID??
 	return order, nil
 }
 
-// WaitOrderWorkflow is accepted ShoppingCart?
-func WaitOrderWorkflow(ctx workflow.Context, order Order) (OrderDelivery, error) {
+// CompleteOrderWorkflow is accepted ShoppingCart?
+func CompleteOrderWorkflow(ctx workflow.Context, order Order) (OrderDelivery, error) {
+
+	// Payment + offers atatched; confirm the rest ..
+	// can still go back to order
 
 	// TODO: Future; scheduled delivery; Partner needs to confirm
 	// Child workflow of OrderOffer to Partner
