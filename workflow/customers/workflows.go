@@ -72,8 +72,9 @@ type OrderDelivery struct {
 }
 
 type ShoppingCart struct {
-	PartnerID string
-	Items     []Item
+	CustomerID string
+	PartnerID  string
+	Items      []Item
 	DeliveryDetails
 }
 
@@ -97,9 +98,13 @@ func OrderWorkflow(ctx workflow.Context, items []Item, delDetails DeliveryDetail
 	// Split the wfid to get the CustomerID/PartnerID combo
 	i := workflow.GetInfo(ctx)
 	wfid := i.WorkflowExecution.ID
+	fmt.Println("IN OrderWorkflow!!! WFID: ", wfid)
 	ids := strings.Split(wfid, "/")
-	customerID := ids[0]
-	partnerID := ids[1]
+	fmt.Println("ID Split: ", ids)
+	customerID := "mleow"
+	partnerID := "baba-ang"
+	//customerID := ids[0]
+	//partnerID := ids[1]
 	fmt.Println("CustomerID: ", customerID, " PartnerID: ", partnerID)
 	fmt.Println("CustomerOrderWorkflow ID: ", wfid, " ", i.WorkflowExecution.RunID)
 
@@ -121,6 +126,8 @@ func OrderWorkflow(ctx workflow.Context, items []Item, delDetails DeliveryDetail
 
 	// Choice made but not confirmed yet ..
 	// Make payment (if is COD) Success to Escrowo
+
+	// Checkout signal confirms things? and unblocks
 
 	// Recalculate everything; show the new vakues ..
 	// Payment must be attached before can kick off
