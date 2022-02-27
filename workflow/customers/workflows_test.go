@@ -15,9 +15,7 @@ import (
 
 func TestOrderWorkflow(t *testing.T) {
 	type args struct {
-		cart       ShoppingCart
-		items      []Item
-		delDetails DeliveryDetails
+		cart ShoppingCart
 	}
 	tests := []struct {
 		name    string
@@ -25,35 +23,10 @@ func TestOrderWorkflow(t *testing.T) {
 		want    Order
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{"happy #1", args{
 			cart: ShoppingCart{
 				CustomerID: "mleow",
 				PartnerID:  "baba-ang",
-			},
-			items: []Item{
-				{
-					ShortName: "",
-					ShortCode: "",
-					Quantity:  0,
-					Amount:    0,
-					Notes:     "",
-				},
-				{
-					ShortName: "",
-					ShortCode: "",
-					Quantity:  0,
-					Amount:    0,
-					Notes:     "",
-				},
-			},
-			delDetails: DeliveryDetails{
-				CustomerID:       "",
-				FullAddress:      nil,
-				ContactNumber:    "",
-				DeliveryCost:     0,
-				DeliveryRange:    0,
-				DeliveryEstimate: 0,
 			},
 		}, Order{
 			ID:        "",
@@ -125,8 +98,8 @@ func TestOrderWorkflow(t *testing.T) {
 					Item: Item{
 						ShortName: "LAMBIE BURGER",
 						ShortCode: "LAMB-01",
-						Quantity:  2,
-						Amount:    20,
+						Quantity:  1,
+						Amount:    10,
 						Notes:     "",
 					},
 				})
