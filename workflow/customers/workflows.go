@@ -2,83 +2,90 @@ package customers
 
 import (
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"go.temporal.io/sdk/workflow"
 )
 
 type Customer struct {
-	ID              string
-	LinkedPhoneNo   string
-	FullName        string
-	DisplayName     string
-	SignedAgreement bool
-	SignUpDate      string
-	TerminationDate string
+	ID              string `json:"id,omitempty"`
+	LinkedPhoneNo   string `json:"linked_phone_no,omitempty"`
+	FullName        string `json:"full_name,omitempty"`
+	DisplayName     string `json:"display_name,omitempty"`
+	SignedAgreement bool   `json:"signed_agreement,omitempty"`
+	SignUpDate      string `json:"sign_up_date,omitempty"`
+	TerminationDate string `json:"termination_date,omitempty"`
 }
 
 // Will move some below to the common type to be shared ..
 
 type Item struct {
-	ShortName string
-	ShortCode string
-	Quantity  int
-	Amount    int
-	Notes     string // can use to indicate discounts?
+	ShortName string `json:"name,omitempty"`
+	ShortCode string `json:"code,omitempty"`
+	Quantity  int    `json:"quantity,omitempty"`
+	Amount    int    `json:"amount,omitempty"`
+	Notes     string `json:"notes,omitempty"` // can use to indicate discounts?
 }
 
 type PaymentDetails struct {
-	ID        string
-	ShortName string
+	ID        string `json:"id,omitempty"`
+	ShortName string `json:"short_name,omitempty"`
 	//COD       bool   // Only CC, others Future
-	Itemized []string // How Total was caluclated for audit.history ..
-	Total    int
+	Itemized []string `json:"itemized,omitempty"` // How Total was caluclated for audit.history ..
+	Total    int      `json:"total,omitempty"`
 }
 
 type OffersClaim struct {
-	ID        string
-	ShortName string
+	ID        string `json:"id,omitempty"`
+	ShortName string `json:"short_name,omitempty"`
 }
 
 type DeliveryDetails struct {
-	CustomerID string
+	CustomerID string `json:"customer_id,omitempty"`
 	//DeliveryDate  string // Future
 	//DeliveryTime  string // Future
-	FullAddress      []string
-	ContactNumber    string
-	DeliveryCost     int
-	DeliveryRange    int
-	DeliveryEstimate int
+	FullAddress      []string `json:"full_address,omitempty"`
+	ContactNumber    string   `json:"contact_number,omitempty"`
+	DeliveryCost     int      `json:"delivery_cost,omitempty"`
+	DeliveryRange    int      `json:"delivery_range,omitempty"`
+	DeliveryEstimate int      `json:"delivery_estimate,omitempty"`
 }
 
 type Order struct {
-	ID        string
-	PartnerID string
-	Items     []Item
-	DeliveryDetails
-	PaymentDetails
-	OffersClaim
+	ID              string `json:"id,omitempty"`
+	PartnerID       string `json:"partner_id,omitempty"`
+	Items           []Item `json:"items,omitempty"`
+	DeliveryDetails `json:"delivery_details,omitempty"`
+	PaymentDetails  `json:"payment_details,omitempty"`
+	OffersClaim     `json:"offers_claim,omitempty"`
 }
 
 type OrderDelivery struct {
-	OrderID             string
-	Status              int
-	PartnerAcceptedDate string
-	PartnerPreparedDate string
-	AgentAcceptedDate   string
-	AgentPickedUpDate   string
-	DeliveryCompleted   string
-	Rating              int
+	OrderID             string `json:"order_id,omitempty"`
+	Status              int    `json:"status,omitempty"`
+	PartnerAcceptedDate string `json:"partner_accepted_date,omitempty"`
+	PartnerPreparedDate string `json:"partner_prepared_date,omitempty"`
+	AgentAcceptedDate   string `json:"agent_accepted_date,omitempty"`
+	AgentPickedUpDate   string `json:"agent_picked_up_date,omitempty"`
+	DeliveryCompleted   string `json:"delivery_completed,omitempty"`
+	Rating              int    `json:"rating,omitempty"`
+}
+
+type Cart struct {
+	CustomerID string `json:"customer_id"`
+	PartnerID  string `json:"partner_id"`
+	Items      []Item `json:"items,omitempty"`
 }
 
 type ShoppingCart struct {
-	CustomerID string
-	PartnerID  string
-	Items      []Item
-	DeliveryDetails
+	CustomerID      string `json:"customer_id,string,omitempty"`
+	PartnerID       string `json:"partner_id,string,omitempty"`
+	Items           []Item `json:"items,omitempty"`
+	DeliveryDetails `json:"delivery_details,omitempty"`
 }
 
 type OrderSignal struct {
-	Action string
-	Item
+	Action string `json:"action"`
+	Item   `json:"item,omitempty"`
 }
 
 // WorkflowID is customerID/partnerID? guarantee one actively running
@@ -93,9 +100,9 @@ func CustomerWorkflow(ctx workflow.Context) {
 	// Temporary/Permanent Ban
 }
 
-func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, error) {
+func NewOrderWorkflow(isTest bool) func(workflow.Context, Cart) (Order, error) {
 	if isTest {
-		return func(ctx workflow.Context, cart ShoppingCart) (Order, error) {
+		return func(ctx workflow.Context, cart Cart) (Order, error) {
 			signalChan := workflow.GetSignalChannel(ctx, "order-action")
 			for {
 				// Block until PlaceOrder which is order-action -> complete
@@ -126,7 +133,7 @@ func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, 
 	return implOrderWorkflow
 }
 
-func implOrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
+func implOrderWorkflow(ctx workflow.Context, cart Cart) (Order, error) {
 	// Create a new ShoppingCart for use in the future/interruption ..
 	// Basic validation? if got no items? partnerID must be valid?
 	//cart := ShoppingCart{
@@ -186,7 +193,7 @@ func implOrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
 }
 
 // OrderWorkflow will confirm the COD delivery details
-func OrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
+func OrderWorkflow(ctx workflow.Context, cart Cart) (Order, error) {
 	// Query will return shoppingCart ..
 	// Default date/time is now .. location is auto-filled based on location
 
@@ -194,9 +201,12 @@ func OrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
 	i := workflow.GetInfo(ctx)
 	wfid := i.WorkflowExecution.ID
 	fmt.Println("IN OrderWorkflow!!! WFID: ", wfid)
-	fmt.Println("CustomerID: ", cart.CustomerID, " PartnerID: ", cart.PartnerID)
+	fmt.Println("CART: ", cart)
+	//fmt.Println("CustomerID: ", cart.CustomerID, " PartnerID: ", cart.PartnerID)
 	fmt.Println("CustomerOrderWorkflow ID: ", wfid, " ", i.WorkflowExecution.RunID)
 
+	fmt.Println("CART at the start ...")
+	spew.Dump(cart)
 	// How to figure out it is test ..
 	owf := NewOrderWorkflow(true)
 	return owf(ctx, cart)

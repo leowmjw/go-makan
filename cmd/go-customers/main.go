@@ -8,14 +8,16 @@ import (
 
 func main() {
 	// Create the client
-	c, err := client.NewClient(client.Options{})
+	c, err := client.NewClient(client.Options{
+		HostPort: "localhost:7233",
+	})
 	if err != nil {
 		// log failure
 		panic(err)
 	}
 	defer c.Close()
 
-	q := "food.oder"
+	q := "food.order"
 
 	// DEBUG only if need to simulate
 	//for i := 1; i < 2; i++ {
