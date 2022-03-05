@@ -17,6 +17,20 @@ func main() {
 			fmt.Println("Hello friend!")
 			return nil
 		},
+		Commands: []*cli.Command{
+			{
+				Name:  "start",
+				Usage: "start",
+				Action: func(c *cli.Context) error {
+					fmt.Println("TestReceiveFirstItemStartOrderWorkflow")
+					// Create the client
+					// start the api server
+					// Call http ..
+					// tear it down ..
+					return nil
+				},
+			},
+		},
 	}
 
 	err := app.Run(os.Args)

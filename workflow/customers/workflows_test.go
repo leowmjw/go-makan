@@ -13,6 +13,21 @@ import (
 	"time"
 )
 
+func TestReceiveFirstItemStartOrderWorkflow(t *testing.T) {
+	// When receive the first add item via action signal
+	//	start a new OrderWorkflow  combo <customerID>/<partnerID>
+	//		with ShoppingCart
+	// If already exists, continue on; flag but not fatal?
+	//	Optional: with the pre-req Location info
+	//	Query Shopping Cart should succeed
+}
+
+func TestRemovedLastItemRemoveCartOrderWorkflow(t *testing.T) {
+	// Given a bunch of ShoppingCarts OrderWorkflow combo <customerID>/<partnerID>
+	// When receive the final remove of Item from ShoppingCart,
+	//		then => close OrderWorkflow  combo <customerID>/<partnerID>
+}
+
 func TestOrderWorkflow(t *testing.T) {
 	type args struct {
 		cart ShoppingCart

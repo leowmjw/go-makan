@@ -93,18 +93,40 @@ func CustomerWorkflow(ctx workflow.Context) {
 	// Temporary/Permanent Ban
 }
 
-// OrderWorkflow will confirm the COD delivery details
-func OrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
-	// Query will return shoppingCart ..
-	// Default date/time is now .. location is auto-filled based on location
+func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, error) {
+	if isTest {
+		return func(ctx workflow.Context, cart ShoppingCart) (Order, error) {
+			signalChan := workflow.GetSignalChannel(ctx, "order-action")
+			for {
+				// Block until PlaceOrder which is order-action -> complete
+				var orderSignal *OrderSignal
+				more := signalChan.Receive(ctx, &orderSignal)
+				if !more {
+					fmt.Println("Channel closed ..")
+					break
+				}
+				// DEBUG
+				//spew.Dump(orderSignal)
+				// Test loop out
+				if orderSignal.Action == "complete" {
+					break
+				}
+				//receivedPlaceOrder = true
+				//if receivedPlaceOrder {
+				//	break
+				//}
+			}
 
-	// Split the wfid to get the CustomerID/PartnerID combo
-	i := workflow.GetInfo(ctx)
-	wfid := i.WorkflowExecution.ID
-	fmt.Println("IN OrderWorkflow!!! WFID: ", wfid)
-	fmt.Println("CustomerID: ", cart.CustomerID, " PartnerID: ", cart.PartnerID)
-	fmt.Println("CustomerOrderWorkflow ID: ", wfid, " ", i.WorkflowExecution.RunID)
+			order := Order{}
+			// Persist Order; just pass back ID??
+			return order, nil
+		}
+	}
 
+	return implOrderWorkflow
+}
+
+func implOrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
 	// Create a new ShoppingCart for use in the future/interruption ..
 	// Basic validation? if got no items? partnerID must be valid?
 	//cart := ShoppingCart{
@@ -161,6 +183,23 @@ func OrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
 	order := Order{}
 	// Persist Order; just pass back ID??
 	return order, nil
+}
+
+// OrderWorkflow will confirm the COD delivery details
+func OrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
+	// Query will return shoppingCart ..
+	// Default date/time is now .. location is auto-filled based on location
+
+	// Split the wfid to get the CustomerID/PartnerID combo
+	i := workflow.GetInfo(ctx)
+	wfid := i.WorkflowExecution.ID
+	fmt.Println("IN OrderWorkflow!!! WFID: ", wfid)
+	fmt.Println("CustomerID: ", cart.CustomerID, " PartnerID: ", cart.PartnerID)
+	fmt.Println("CustomerOrderWorkflow ID: ", wfid, " ", i.WorkflowExecution.RunID)
+
+	// How to figure out it is test ..
+	owf := NewOrderWorkflow(true)
+	return owf(ctx, cart)
 }
 
 // CompleteOrderWorkflow is accepted ShoppingCart?
