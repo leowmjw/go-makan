@@ -3,6 +3,7 @@ module app
 go 1.17
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/google/go-cmp v0.5.7
 	github.com/urfave/cli/v2 v2.3.0
 	go.temporal.io/sdk v1.13.1
@@ -10,7 +11,6 @@ require (
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

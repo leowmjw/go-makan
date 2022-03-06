@@ -77,8 +77,8 @@ type Cart struct {
 }
 
 type ShoppingCart struct {
-	CustomerID      string `json:"customer_id,string,omitempty"`
-	PartnerID       string `json:"partner_id,string,omitempty"`
+	CustomerID      string `json:"customer_id"`
+	PartnerID       string `json:"partner_id"`
 	Items           []Item `json:"items,omitempty"`
 	DeliveryDetails `json:"delivery_details,omitempty"`
 }
@@ -100,11 +100,16 @@ func CustomerWorkflow(ctx workflow.Context) {
 	// Temporary/Permanent Ban
 }
 
-func NewOrderWorkflow(isTest bool) func(workflow.Context, Cart) (Order, error) {
+func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, error) {
 	if isTest {
-		return func(ctx workflow.Context, cart Cart) (Order, error) {
+		return func(ctx workflow.Context, cart ShoppingCart) (Order, error) {
+			// Keep track of current Order
+			order := Order{}
+			// Waiting for this signal from customer
 			signalChan := workflow.GetSignalChannel(ctx, "order-action")
+			// Loop until get a Order Submitted or nothing in the ShoppingCart
 			for {
+			orderSignalLoop:
 				// Block until PlaceOrder which is order-action -> complete
 				var orderSignal *OrderSignal
 				more := signalChan.Receive(ctx, &orderSignal)
@@ -112,20 +117,45 @@ func NewOrderWorkflow(isTest bool) func(workflow.Context, Cart) (Order, error) {
 					fmt.Println("Channel closed ..")
 					break
 				}
+				// TODO: In Future; when getting close to 1K signals receive;
+				// 	can kickoff new ChildWorkflow ..
 				// DEBUG
 				//spew.Dump(orderSignal)
 				// Test loop out
 				if orderSignal.Action == "complete" {
+					fmt.Println("Order done and submitted!!!")
 					break
 				}
-				//receivedPlaceOrder = true
-				//if receivedPlaceOrder {
-				//	break
-				//}
+
+				if orderSignal.Action == "delete" {
+					// Look b ySjortCode; and reform the slcie .,.
+				}
+
+				if orderSignal.Action == "upsert" {
+					// Validate if got Item; if no; do nothing ...
+					if orderSignal.Item.Quantity < 1 {
+						// Look and remove item
+						// if not found ignore??
+
+					} else {
+						// Add item to the slice ...
+						order.Items = append(order.Items, orderSignal.Item)
+					}
+
+					// If remove all and no more members in Order; can break and exist ..
+					if len(order.Items) == 0 {
+						// Nothing left in order; quit the flow!!
+						fmt.Println("NOTHING in Order .. Quitting!!!!")
+						break
+					}
+
+					goto orderSignalLoop
+				}
+
+				// If reach here means no signal recognize; flag it!!!
+				fmt.Println("UNKNOWN Signal ACTION: ", orderSignal.Action)
 			}
 
-			order := Order{}
-			// Persist Order; just pass back ID??
 			return order, nil
 		}
 	}
@@ -133,7 +163,7 @@ func NewOrderWorkflow(isTest bool) func(workflow.Context, Cart) (Order, error) {
 	return implOrderWorkflow
 }
 
-func implOrderWorkflow(ctx workflow.Context, cart Cart) (Order, error) {
+func implOrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
 	// Create a new ShoppingCart for use in the future/interruption ..
 	// Basic validation? if got no items? partnerID must be valid?
 	//cart := ShoppingCart{
@@ -193,7 +223,7 @@ func implOrderWorkflow(ctx workflow.Context, cart Cart) (Order, error) {
 }
 
 // OrderWorkflow will confirm the COD delivery details
-func OrderWorkflow(ctx workflow.Context, cart Cart) (Order, error) {
+func OrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
 	// Query will return shoppingCart ..
 	// Default date/time is now .. location is auto-filled based on location
 

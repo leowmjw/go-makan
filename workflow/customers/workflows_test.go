@@ -20,12 +20,16 @@ func TestReceiveFirstItemStartOrderWorkflow(t *testing.T) {
 	// If already exists, continue on; flag but not fatal?
 	//	Optional: with the pre-req Location info
 	//	Query Shopping Cart should succeed
+	// Check the workflow is still running ..
+	t.Fatal("TODO: Implement ...")
 }
 
 func TestRemovedLastItemRemoveCartOrderWorkflow(t *testing.T) {
 	// Given a bunch of ShoppingCarts OrderWorkflow combo <customerID>/<partnerID>
 	// When receive the final remove of Item from ShoppingCart,
 	//		then => close OrderWorkflow  combo <customerID>/<partnerID>
+	// Assert the workflow should now be closed ..
+	t.Fatal("TODO: Implement ...")
 }
 
 func TestOrderWorkflow(t *testing.T) {
@@ -88,7 +92,7 @@ func TestOrderWorkflow(t *testing.T) {
 			// new test environment ..
 			env := ts.NewTestWorkflowEnvironment()
 			env.SetStartWorkflowOptions(client.StartWorkflowOptions{
-				ID: "mleow/baba-ang", // this does not work ..
+				ID: "mleow/baba-ang", // this does not work .. now it does :P
 			})
 
 			env.RegisterWorkflow(OrderWorkflow)
