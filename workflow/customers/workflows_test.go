@@ -3,6 +3,7 @@ package customers
 import (
 	"errors"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/go-cmp/cmp"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
@@ -14,6 +15,9 @@ import (
 )
 
 func TestReceiveFirstItemStartOrderWorkflow(t *testing.T) {
+	// Setup temporal testsuite
+	ts := testsuite.WorkflowTestSuite{}
+
 	// When receive the first add item via action signal
 	//	start a new OrderWorkflow  combo <customerID>/<partnerID>
 	//		with ShoppingCart
@@ -21,10 +25,115 @@ func TestReceiveFirstItemStartOrderWorkflow(t *testing.T) {
 	//	Optional: with the pre-req Location info
 	//	Query Shopping Cart should succeed
 	// Check the workflow is still running ..
-	t.Fatal("TODO: Implement ...")
+
+	env := ts.NewTestWorkflowEnvironment()
+	env.RegisterWorkflow(OrderWorkflow)
+
+	env.RegisterDelayedCallback(func() {
+		fmt.Println("Send signal to get started hre ,...")
+		env.SignalWorkflow("order-action", OrderSignal{
+			Action: "upsert",
+			Item: Item{
+				ShortName: "FishBurger",
+				ShortCode: "FB-01",
+				Quantity:  3,
+				Amount:    10,
+				Notes:     "is goode",
+			},
+		})
+
+		// If put here ; it will fail .. NOPE ..
+		//if env.IsWorkflowCompleted() {
+		//	t.Fatal("Should be started? NOT completed")
+		//}
+
+	}, 0)
+
+	env.RegisterDelayedCallback(func() {
+		fmt.Println("Assert workflow has started and is running ..")
+
+		if env.IsWorkflowCompleted() {
+			t.Fatal("Should be started? NOT completed")
+		}
+	}, time.Second*2)
+
+	env.RegisterDelayedCallback(func() {
+		// Cancel does not seem towork??
+		//env.CancelWorkflow()
+		env.SignalWorkflow("order-action", OrderSignal{
+			Action: "complete",
+		})
+
+		//err := env.GetWorkflowError()
+		//fmt.Println("FINAL ERR: ", err)
+
+		//for {
+		//	if env.IsWorkflowCompleted() {
+		//		break
+		//	}
+		//}
+
+	}, time.Second*3)
+
+	//env.RegisterDelayedCallback(func() {
+	//	fmt.Println("************** WRAp up .. *")
+	//	time.Sleep(time.Millisecond * 1000)
+	//	// Won't reach here as the WF will already be completed :(
+	//	// Should fail first?
+	//	if !env.IsWorkflowCompleted() {
+	//		t.Fatal("Should have finished!")
+	//	}
+	//
+	//	// After completed; then get result .
+	//	var order Order
+	//	wferr := env.GetWorkflowResult(&order)
+	//	if wferr != nil {
+	//		t.Fatal(wferr)
+	//	}
+	//	spew.Dump(order)
+	//
+	//}, time.Millisecond*3001)
+
+	// in test env; the signaltostart does not seem to work ..
+	env.ExecuteWorkflow(OrderWorkflow, ShoppingCart{
+		Items: []Item{{
+			ShortName: "FishBurger",
+			ShortCode: "FB-01",
+			Quantity:  1,
+			Amount:    10,
+			Notes:     "is new",
+		}},
+	})
+	// Above will block until it is completed
+	if !env.IsWorkflowCompleted() {
+		t.Fatal("Should have finished!")
+	}
+	err := env.GetWorkflowError()
+	if err != nil {
+		t.Fatal("WFERR: ", err)
+	}
+
+	// After completed; then get result .
+	var order Order
+	wferr := env.GetWorkflowResult(&order)
+	if wferr != nil {
+		t.Fatal(wferr)
+	}
+	spew.Dump(order.Items)
+
+	// DEBUG
+	//t.Fatal("TODO: Implement ...")
+	//if !env.IsWorkflowCompleted() {
+	//	t.Fatal("Shoudl block ..")
+	//}
 }
 
 func TestRemovedLastItemRemoveCartOrderWorkflow(t *testing.T) {
+	// Setup temporal testsuite
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+	env.RegisterWorkflow(OrderWorkflow)
+
 	// Given a bunch of ShoppingCarts OrderWorkflow combo <customerID>/<partnerID>
 	// When receive the final remove of Item from ShoppingCart,
 	//		then => close OrderWorkflow  combo <customerID>/<partnerID>

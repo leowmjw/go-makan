@@ -139,7 +139,11 @@ func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, 
 
 					} else {
 						// Add item to the slice ...
+						spew.Dump(order.Items)
+						spew.Dump(orderSignal.Item)
 						order.Items = append(order.Items, orderSignal.Item)
+						fmt.Println("AFTER APPEND ..")
+						spew.Dump(order.Items)
 					}
 
 					// If remove all and no more members in Order; can break and exist ..
@@ -217,7 +221,9 @@ func implOrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
 
 	// action - PlaceOrder to unblock final and complete ..
 	// Calculate the time order OrderID
-	order := Order{}
+	order := Order{
+		ID: "abc",
+	}
 	// Persist Order; just pass back ID??
 	return order, nil
 }
@@ -235,8 +241,9 @@ func OrderWorkflow(ctx workflow.Context, cart ShoppingCart) (Order, error) {
 	//fmt.Println("CustomerID: ", cart.CustomerID, " PartnerID: ", cart.PartnerID)
 	fmt.Println("CustomerOrderWorkflow ID: ", wfid, " ", i.WorkflowExecution.RunID)
 
-	fmt.Println("CART at the start ...")
-	spew.Dump(cart)
+	// DEBUG
+	//fmt.Println("CART at the start ...")
+	//spew.Dump(cart)
 	// How to figure out it is test ..
 	owf := NewOrderWorkflow(true)
 	return owf(ctx, cart)
