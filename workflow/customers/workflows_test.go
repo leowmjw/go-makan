@@ -3,7 +3,6 @@ package customers
 import (
 	"errors"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/google/go-cmp/cmp"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
@@ -29,6 +28,7 @@ func TestReceiveFirstItemStartOrderWorkflow(t *testing.T) {
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterWorkflow(OrderWorkflow)
 
+	// To simulate signal starting WF; still need to start WF manually tho .. :P
 	env.RegisterDelayedCallback(func() {
 		fmt.Println("Send signal to get started hre ,...")
 		env.SignalWorkflow("order-action", OrderSignal{
@@ -58,6 +58,19 @@ func TestReceiveFirstItemStartOrderWorkflow(t *testing.T) {
 	}, time.Second*2)
 
 	env.RegisterDelayedCallback(func() {
+		// Add, see if the order changes ..
+		env.SignalWorkflow("order-action", OrderSignal{
+			Action: "upsert",
+			Item: Item{
+				ShortName: "ChicSpicy",
+				ShortCode: "CB-03",
+				Quantity:  2,
+				Amount:    20,
+				Notes:     "luv chix",
+			},
+		})
+	}, time.Second*3)
+	env.RegisterDelayedCallback(func() {
 		// Cancel does not seem towork??
 		//env.CancelWorkflow()
 		env.SignalWorkflow("order-action", OrderSignal{
@@ -73,7 +86,7 @@ func TestReceiveFirstItemStartOrderWorkflow(t *testing.T) {
 		//	}
 		//}
 
-	}, time.Second*3)
+	}, time.Second*5)
 
 	//env.RegisterDelayedCallback(func() {
 	//	fmt.Println("************** WRAp up .. *")
@@ -97,11 +110,11 @@ func TestReceiveFirstItemStartOrderWorkflow(t *testing.T) {
 	// in test env; the signaltostart does not seem to work ..
 	env.ExecuteWorkflow(OrderWorkflow, ShoppingCart{
 		Items: []Item{{
-			ShortName: "FishBurger",
-			ShortCode: "FB-01",
+			ShortName: "ChicSpicy",
+			ShortCode: "CB-03",
 			Quantity:  1,
 			Amount:    10,
-			Notes:     "is new",
+			Notes:     "from prev session",
 		}},
 	})
 	// Above will block until it is completed
@@ -119,8 +132,30 @@ func TestReceiveFirstItemStartOrderWorkflow(t *testing.T) {
 	if wferr != nil {
 		t.Fatal(wferr)
 	}
-	spew.Dump(order.Items)
-
+	got := order.Items
+	// DEBUG
+	//spew.Dump(got)
+	want := []Item{
+		{
+			ShortName: "ChicSpicy",
+			ShortCode: "CB-03",
+			Quantity:  2,
+			Amount:    20,
+			Notes:     "luv chix",
+		},
+		{
+			ShortName: "FishBurger",
+			ShortCode: "FB-01",
+			Quantity:  3,
+			Amount:    10,
+			Notes:     "is goode",
+		},
+	}
+	// After some changes; final result should match
+	// including ordering ...
+	if !cmp.Equal(want, got) {
+		t.Fatal("DIFF: ", cmp.Diff(want, got))
+	}
 	// DEBUG
 	//t.Fatal("TODO: Implement ...")
 	//if !env.IsWorkflowCompleted() {

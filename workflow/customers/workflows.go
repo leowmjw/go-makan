@@ -2,7 +2,6 @@ package customers
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -103,8 +102,10 @@ func CustomerWorkflow(ctx workflow.Context) {
 func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, error) {
 	if isTest {
 		return func(ctx workflow.Context, cart ShoppingCart) (Order, error) {
-			// Keep track of current Order
-			order := Order{}
+			// Start current Order if got any prev cart ..
+			order := Order{
+				Items: cart.Items,
+			}
 			// Waiting for this signal from customer
 			signalChan := workflow.GetSignalChannel(ctx, "order-action")
 			// Loop until get a Order Submitted or nothing in the ShoppingCart
@@ -139,11 +140,13 @@ func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, 
 
 					} else {
 						// Add item to the slice ...
-						spew.Dump(order.Items)
-						spew.Dump(orderSignal.Item)
+						// DEBUG
+						//spew.Dump(order.Items)
+						//spew.Dump(orderSignal.Item)
 						order.Items = append(order.Items, orderSignal.Item)
-						fmt.Println("AFTER APPEND ..")
-						spew.Dump(order.Items)
+						// DEBUG
+						//fmt.Println("AFTER APPEND ..")
+						//spew.Dump(order.Items)
 					}
 
 					// If remove all and no more members in Order; can break and exist ..
