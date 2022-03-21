@@ -173,7 +173,119 @@ func TestRemovedLastItemRemoveCartOrderWorkflow(t *testing.T) {
 	// When receive the final remove of Item from ShoppingCart,
 	//		then => close OrderWorkflow  combo <customerID>/<partnerID>
 	// Assert the workflow should now be closed ..
-	t.Fatal("TODO: Implement ...")
+	//t.Fatal("TODO: Implement ...")
+	// Scenario: Have 3 items; remove from mid, complete; should be expected
+	// Scenario #2: Have 1 item; remove; should be completed, nothing returned ..
+	// To simulate signal starting WF; still need to start WF manually tho .. :P
+	env.RegisterDelayedCallback(func() {
+		fmt.Println("Send signal to get started hre ,...")
+		env.SignalWorkflow("order-action", OrderSignal{
+			Action: "upsert",
+			Item: Item{
+				ShortName: "FishBurgerSambal",
+				ShortCode: "FB-02",
+				Quantity:  3,
+				Amount:    30,
+				Notes:     "is goode",
+			},
+		})
+	}, 0)
+	env.RegisterDelayedCallback(func() {
+		// Test delete via upsert of <1 items ..
+		env.SignalWorkflow("order-action", OrderSignal{
+			Action: "delete",
+			Item: Item{
+				ShortCode: "FB-01",
+			},
+		})
+	}, time.Second*2)
+
+	env.RegisterDelayedCallback(func() {
+		// Test delete via upsert of <1 items ..
+		env.SignalWorkflow("order-action", OrderSignal{
+			Action: "upsert",
+			Item: Item{
+				ShortCode: "CB-03",
+				Quantity:  0,
+			},
+		})
+	}, time.Second*3)
+	// Finish the test ..
+	env.RegisterDelayedCallback(func() {
+		// Cancel does not seem towork??
+		//env.CancelWorkflow()
+		env.SignalWorkflow("order-action", OrderSignal{
+			Action: "complete",
+		})
+	}, time.Second*5)
+
+	// in test env; the signaltostart does not seem to work ..
+	env.ExecuteWorkflow(OrderWorkflow, ShoppingCart{
+		Items: []Item{
+			{
+				ShortName: "ChicNormal",
+				ShortCode: "CB-01",
+				Quantity:  1,
+				Amount:    7,
+				Notes:     "i like chix",
+			},
+			{
+				ShortName: "ChicSpicy",
+				ShortCode: "CB-03",
+				Quantity:  1,
+				Amount:    10,
+				Notes:     "from prev session",
+			},
+			{
+				ShortName: "FishBurger",
+				ShortCode: "FB-01",
+				Quantity:  3,
+				Amount:    15,
+				Notes:     "3x Fishies",
+			},
+		},
+	})
+
+	// Above will block until it is completed
+	if !env.IsWorkflowCompleted() {
+		t.Fatal("Should have finished!")
+	}
+	err := env.GetWorkflowError()
+	if err != nil {
+		t.Fatal("WFERR: ", err)
+	}
+
+	// After completed; then get result .
+	var order Order
+	wferr := env.GetWorkflowResult(&order)
+	if wferr != nil {
+		t.Fatal(wferr)
+	}
+	got := order.Items
+	// DEBUG
+	//spew.Dump(got)
+	want := []Item{
+		{
+			ShortName: "ChicNormal",
+			ShortCode: "CB-01",
+			Quantity:  1,
+			Amount:    7,
+			Notes:     "i like chix",
+		},
+		{
+			ShortName: "FishBurgerSambal",
+			ShortCode: "FB-02",
+			Quantity:  3,
+			Amount:    30,
+			Notes:     "is goode",
+		},
+	}
+	// After some changes; final result should match
+	// including ordering ...
+	if !cmp.Equal(want, got) {
+		t.Fatal("DIFF: ", cmp.Diff(want, got))
+	}
+
 }
 
 func TestOrderWorkflow(t *testing.T) {

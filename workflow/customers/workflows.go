@@ -130,6 +130,33 @@ func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, 
 
 				if orderSignal.Action == "delete" {
 					// Look b ySjortCode; and reform the slcie .,.
+					fmt.Println("Trigger removal via delete ..")
+					// First check if item exists by ShortCode
+					code := orderSignal.Item.ShortCode
+					existingItem := false
+					for i, v := range order.Items {
+						// Once found; splice it out ..
+						if code == v.ShortCode {
+							fmt.Println("Found Item in index ", i, " remove ..")
+							// Slow inefficient to maintain order ..
+							order.Items = append(order.Items[:i], order.Items[i+1:]...)
+							// Now can chiao!
+							existingItem = true
+							break
+						}
+					}
+					// 	if NOT exist; strange, bad data entered?
+					if !existingItem {
+						fmt.Println("Could NOT find Item w/ code: ", code, " in Order. Skip ...")
+					}
+					// If remove all and no more members in Order; can break and exist ..
+					if len(order.Items) == 0 {
+						// Nothing left in order; quit the flow!!
+						fmt.Println("Action: delete => NOTHING in Order .. Quitting!!!!")
+						break
+					}
+
+					goto orderSignalLoop
 				}
 
 				if orderSignal.Action == "upsert" {
@@ -137,7 +164,25 @@ func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, 
 					if orderSignal.Item.Quantity < 1 {
 						// Look and remove item
 						// if not found ignore??
-
+						fmt.Println("Trigger removal via upsert ..")
+						// First check if item exists by ShortCode
+						code := orderSignal.Item.ShortCode
+						existingItem := false
+						for i, v := range order.Items {
+							// Once found; splice it out ..
+							if code == v.ShortCode {
+								fmt.Println("Found Item in index ", i, " remove ..")
+								// Slow inefficient to maintain order ..
+								order.Items = append(order.Items[:i], order.Items[i+1:]...)
+								// Now can chiao!
+								existingItem = true
+								break
+							}
+						}
+						// 	if NOT exist; strange, bad data entered?
+						if !existingItem {
+							fmt.Println("Could NOT find Item w/ code: ", code, " in Order. Skip ...")
+						}
 					} else {
 						// First check if item exists by ShortCode
 						code := orderSignal.Item.ShortCode
@@ -168,7 +213,7 @@ func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, 
 					// If remove all and no more members in Order; can break and exist ..
 					if len(order.Items) == 0 {
 						// Nothing left in order; quit the flow!!
-						fmt.Println("NOTHING in Order .. Quitting!!!!")
+						fmt.Println("Action: upsert => NOTHING in Order .. Quitting!!!!")
 						break
 					}
 
