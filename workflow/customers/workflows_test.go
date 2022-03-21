@@ -163,19 +163,13 @@ func TestReceiveFirstItemStartOrderWorkflow(t *testing.T) {
 	//}
 }
 
-func TestRemovedLastItemRemoveCartOrderWorkflow(t *testing.T) {
+func TestRemovalUpsertDeleteOrderWorkflow(t *testing.T) {
 	// Setup temporal testsuite
 	ts := testsuite.WorkflowTestSuite{}
 	env := ts.NewTestWorkflowEnvironment()
 	env.RegisterWorkflow(OrderWorkflow)
 
-	// Given a bunch of ShoppingCarts OrderWorkflow combo <customerID>/<partnerID>
-	// When receive the final remove of Item from ShoppingCart,
-	//		then => close OrderWorkflow  combo <customerID>/<partnerID>
-	// Assert the workflow should now be closed ..
-	//t.Fatal("TODO: Implement ...")
-	// Scenario: Have 3 items; remove from mid, complete; should be expected
-	// Scenario #2: Have 1 item; remove; should be completed, nothing returned ..
+	// Scenario: Have 3 items; remove from mid using both delete + upsert, complete; should be expected
 	// To simulate signal starting WF; still need to start WF manually tho .. :P
 	env.RegisterDelayedCallback(func() {
 		fmt.Println("Send signal to get started hre ,...")
@@ -280,6 +274,93 @@ func TestRemovedLastItemRemoveCartOrderWorkflow(t *testing.T) {
 			Notes:     "is goode",
 		},
 	}
+	// After some changes; final result should match
+	// including ordering ...
+	if !cmp.Equal(want, got) {
+		t.Fatal("DIFF: ", cmp.Diff(want, got))
+	}
+}
+
+func TestRemovedLastItemRemoveCartOrderWorkflow(t *testing.T) {
+	// Setup temporal testsuite
+	ts := testsuite.WorkflowTestSuite{}
+	env := ts.NewTestWorkflowEnvironment()
+	env.RegisterWorkflow(OrderWorkflow)
+
+	// Scenario #2: Have 1 item; remove; should be completed, nothing returned ..
+	// To simulate signal starting WF; still need to start WF manually tho .. :P
+	// To simulate signal starting WF; still need to start WF manually tho .. :P
+	env.RegisterDelayedCallback(func() {
+		fmt.Println("Send signal to get started hre ,...")
+		env.SignalWorkflow("order-action", OrderSignal{
+			Action: "upsert",
+			Item: Item{
+				ShortName: "FishBurgerSambal",
+				ShortCode: "FB-02",
+				Quantity:  3,
+				Amount:    30,
+				Notes:     "is goode",
+			},
+		})
+	}, 0)
+
+	env.RegisterDelayedCallback(func() {
+		// Test delete via upsert of <1 items .. it is NON-exist
+		env.SignalWorkflow("order-action", OrderSignal{
+			Action: "upsert",
+			Item: Item{
+				ShortCode: "CB-03",
+				Quantity:  0,
+			},
+		})
+	}, time.Second*2)
+
+	env.RegisterDelayedCallback(func() {
+		// Test delete via upsert of <1 items ..
+		env.SignalWorkflow("order-action", OrderSignal{
+			Action: "delete",
+			Item: Item{
+				ShortCode: "FB-02",
+			},
+		})
+	}, time.Second*3)
+
+	// Finish the test ..
+	env.RegisterDelayedCallback(func() {
+		// Cancel does not seem towork??
+		//env.CancelWorkflow()
+		//env.SignalWorkflow("order-action", OrderSignal{
+		//	Action: "complete",
+		//})
+
+		// No need to manually complete; it should show as done!
+		// It is checked further down; so might not be needed ..
+	}, time.Second*5)
+
+	// Assert the Workflow is completed .. after signal to remove ..
+
+	// in test env; the signaltostart does not seem to work .. start with empty cart ..
+	env.ExecuteWorkflow(OrderWorkflow, ShoppingCart{})
+
+	// Above will block until it is completed
+	if !env.IsWorkflowCompleted() {
+		t.Fatal("Should have finished!")
+	}
+	err := env.GetWorkflowError()
+	if err != nil {
+		t.Fatal("WFERR: ", err)
+	}
+
+	// After completed; then get result .
+	var order Order
+	wferr := env.GetWorkflowResult(&order)
+	if wferr != nil {
+		t.Fatal(wferr)
+	}
+	got := order.Items
+	// DEBUG
+	//spew.Dump(got)
+	var want []Item
 	// After some changes; final result should match
 	// including ordering ...
 	if !cmp.Equal(want, got) {

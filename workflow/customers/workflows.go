@@ -200,6 +200,7 @@ func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, 
 						// 	if NOT exist; then can append
 						if !existingItem {
 							// Add item to the slice ...
+							fmt.Println("NOT an existingItem .. adding ")
 							// DEBUG
 							//spew.Dump(order.Items)
 							//spew.Dump(orderSignal.Item)
