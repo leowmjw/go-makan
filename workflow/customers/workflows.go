@@ -139,14 +139,30 @@ func NewOrderWorkflow(isTest bool) func(workflow.Context, ShoppingCart) (Order, 
 						// if not found ignore??
 
 					} else {
-						// Add item to the slice ...
-						// DEBUG
-						//spew.Dump(order.Items)
-						//spew.Dump(orderSignal.Item)
-						order.Items = append(order.Items, orderSignal.Item)
-						// DEBUG
-						//fmt.Println("AFTER APPEND ..")
-						//spew.Dump(order.Items)
+						// First check if item exists by ShortCode
+						code := orderSignal.Item.ShortCode
+						existingItem := false
+						for i, v := range order.Items {
+							// Once found; replace it ..
+							if code == v.ShortCode {
+								fmt.Println("Found Item in index ", i, " replacing ..")
+								order.Items[i] = orderSignal.Item
+								// Now can chiao!
+								existingItem = true
+								break
+							}
+						}
+						// 	if NOT exist; then can append
+						if !existingItem {
+							// Add item to the slice ...
+							// DEBUG
+							//spew.Dump(order.Items)
+							//spew.Dump(orderSignal.Item)
+							order.Items = append(order.Items, orderSignal.Item)
+							// DEBUG
+							//fmt.Println("AFTER APPEND ..")
+							//spew.Dump(order.Items)
+						}
 					}
 
 					// If remove all and no more members in Order; can break and exist ..
